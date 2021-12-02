@@ -204,7 +204,7 @@ end //
 delimiter ;
 
 
--- ID: 5a (70, 80)
+-- ID: 5a (80)
 -- Name: reserve_property
 /**
 This procedure allows customers to reserve an available property advertised by an owner  if (and
@@ -235,7 +235,7 @@ begin
 #         • The combination of property_name, owner_email, and customer_email should be unique in the system
             (not exists
                 (
-                    select 0
+                    select 1
                     from Reserve as r
                     where r.Property_Name = i_property_name
                       and r.Owner_Email = i_owner_email
@@ -253,35 +253,38 @@ begin
                     from Reserve as r
                     where r.Customer = i_customer_email
                       and (
-                            i_start_date between r.Start_Date and r.End_Date
-                            or i_end_date between r.Start_Date and r.End_Date
+                            r.Start_Date between i_start_date and i_end_date
+                            or r.End_Date between i_start_date and i_end_date
+#                             i_start_date between r.Start_Date and r.End_Date
+#                             or i_end_date between r.Start_Date and r.End_Date
                         )
+                      and r.Was_Cancelled = 0
                 )
                 )
             and
 #             • The available capacity for the property during the span of dates must be greater than or equal to i_num_guests during the span of dates provided
             (
                 select if(
-                                       (
-                                           select Capacity
-                                           from Property p
-                                           where p.Property_Name = i_property_name
-                                       )
+                                   ((
+                                        select Capacity
+                                        from Property p
+                                        where p.Property_Name = i_property_name
+                                    )
                                        -
-                                       (
-                                           select sum(r.Num_Guests)
-                                           from Reserve r
-                                                    left join Property p
-                                                              on p.Property_Name = r.Property_Name
-                                                                  and p.Owner_Email = r.Owner_Email
-                                           where r.Property_Name = i_property_name
-                                             and (
-                                                   r.Start_Date between i_start_date and i_end_date
-                                                   or r.End_Date between i_start_date and i_end_date
-                                               )
-                                       ) >= i_num_guests,
-                                       1,
-                                       0
+                                    (
+                                        select sum(r.Num_Guests)
+                                        from Reserve r
+                                                 left join Property p
+                                                           on p.Property_Name = r.Property_Name
+                                        where r.Property_Name = i_property_name
+                                          and (
+                                                r.Start_Date between i_start_date and i_end_date
+                                                or r.End_Date between i_start_date and i_end_date
+                                            )
+                                          and r.Was_Cancelled = 0
+                                    )) >= i_num_guests,
+                                   1,
+                                   0
                            )
             )
     then
