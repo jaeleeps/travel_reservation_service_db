@@ -206,6 +206,21 @@ delimiter ;
 
 -- ID: 5a
 -- Name: reserve_property
+/**
+This procedure allows customers to reserve an available property advertised by an owner  if (and
+only if) the following conditions are met:
+• The combination of property_name, owner_email, and customer_email should be
+unique in the system
+• The start date of the reservation should be in the future (use current date for
+comparison)
+• The guest has not already reserved a property that overlaps with the dates of this
+reservation
+• The available capacity for the property during the span of dates must be greater than or
+equal to i_num_guests during the span of dates provided
+• Note: for simplicity, the available capacity of a property over a span of time will be
+defined as the capacity of the property minus the total number of guests staying at that
+property during that span of time
+ */
 drop procedure if exists reserve_property;
 delimiter //
 create procedure reserve_property(
@@ -219,9 +234,61 @@ create procedure reserve_property(
 )
 sp_main:
 begin
-
-
-end //
+    if
+            (not exists
+                (
+                    select 1
+                    from Reserve as r
+                    where r.Property_Name = i_property_name
+                      and r.Owner_Email = i_owner_email
+                      and r.Customer = i_customer_email
+                )
+                )
+            and
+            (i_current_date < i_start_date)
+            and
+            (not exists
+                (
+                    select 1
+                    from Reserve as r
+                    where r.Customer = i_customer_email
+                      and (
+                            i_start_date  between r.Start_Date AND r.End_Date
+                            or i_end_date  between r.Start_Date AND r.End_Date
+                        )
+                )
+                )
+            and
+            (
+                select if(
+                                       (
+                                           select Capacity
+                                           from Property p
+                                           WHERE p.Property_Name = i_property_name
+                                       )
+                                       -
+                                       (
+                                           select sum(r.Num_Guests)
+                                           from Reserve r
+                                                    left join Property p
+                                                              on p.Property_Name = r.Property_Name
+                                                                  and p.Owner_Email = r.Owner_Email
+                                           WHERE r.Property_Name = i_property_name
+                                             AND (
+                                                   r.Start_Date between i_start_date AND i_end_date
+                                                   or r.End_Date between i_start_date AND i_end_date
+                                               )
+                                       ) >= i_num_guests,
+                                       1,
+                                       0
+                           )
+            )
+    then
+        insert into Reserve
+        (Property_Name, Owner_Email, Customer, Start_Date, End_Date, Num_Guests, Was_Cancelled)
+        values (i_property_name, i_owner_email, i_customer_email, i_start_date, i_end_date, i_num_guests, 0);
+    end if;
+end//
 delimiter ;
 
 
