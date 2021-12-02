@@ -204,7 +204,7 @@ end //
 delimiter ;
 
 
--- ID: 5a
+-- ID: 5a (70, 80)
 -- Name: reserve_property
 /**
 This procedure allows customers to reserve an available property advertised by an owner  if (and
@@ -232,10 +232,10 @@ create procedure reserve_property(
 sp_main:
 begin
     if
-#         • The combination of property_name, owner_email, and customer_email should be unique in the system            
+#         • The combination of property_name, owner_email, and customer_email should be unique in the system
             (not exists
                 (
-                    select 1
+                    select 0
                     from Reserve as r
                     where r.Property_Name = i_property_name
                       and r.Owner_Email = i_owner_email
@@ -293,7 +293,7 @@ end//
 delimiter ;
 
 
--- ID: 5b
+-- ID: 5b (90)
 -- Name: cancel_property_reservation
 /**
 This procedure allows a customer to cancel an existing property reservation if (and only if) the following conditions are met:
@@ -301,7 +301,6 @@ This procedure allows a customer to cancel an existing property reservation if (
 • If the reservation is already cancelled, this procedure should do nothing
 • The date of the reservation must be at a date in the future (use the current date passed in for comparison)
 • To cancel a reservation, the was_cancelled attribute in the reserve table should be set to 1
-
  */
 drop procedure if exists cancel_property_reservation;
 delimiter //
@@ -313,23 +312,44 @@ create procedure cancel_property_reservation(
 )
 sp_main:
 begin
-    update Reserve as r
-#         • To cancel a reservation, the was_cancelled attribute in the reserve table should be set to 1
-    set r.Was_Cancelled = 1
+    if
+        (exists(
+                select 1
+                from Reserve as r
 #         • The customer must already have reserved this property
-    where r.Property_Name = i_property_name
-      and r.Owner_Email = i_owner_email
-      and r.Customer = i_customer_email
+                where r.Property_Name = i_property_name
+                  and r.Owner_Email = i_owner_email
+                  and r.Customer = i_customer_email
 #         • If the reservation is already cancelled, this procedure should do nothing
-      and r.Was_Cancelled = 0
+                  and r.Was_Cancelled = 0
 #         • The date of the reservation must be at a date in the future (use the current date passed in for comparison)
-      and r.Start_Date > i_current_date;
+                  and i_current_date < r.Start_Date
+            )
+            )
+    then
+        update Reserve as r
+#         • To cancel a reservation, the was_cancelled attribute in the reserve table should be set to 1
+        set r.Was_Cancelled = 1
+#         • The customer must already have reserved this property
+        where r.Property_Name = i_property_name
+          and r.Owner_Email = i_owner_email
+          and r.Customer = i_customer_email
+#         • If the reservation is already cancelled, this procedure should do nothing
+          and r.Was_Cancelled = 0;
+    end if;
 end //
 delimiter ;
 
 
--- ID: 5c
+-- ID: 5c (95)
 -- Name: customer_review_property
+/**
+  This procedure allows customers to leave a review for a property at which they stayed if (and only if) the following conditions are met:
+• The customer must have started a stay at this property at a date in the past that wasn’t cancelled
+  (current date must be equal to or later than the start date of the reservation at this property)
+• The combination of property_name, owner_email, and customer_email should be distinct in the review table
+  (a customer should not be able to review a property more than once)
+ */
 drop procedure if exists customer_review_property;
 delimiter //
 create procedure customer_review_property(
@@ -342,13 +362,40 @@ create procedure customer_review_property(
 )
 sp_main:
 begin
-    -- TODO: Implement your solution here
-
+    if
+            (exists(
+                    select 1
+                    from Reserve as r
+#         This procedure allows customers to leave a review for a property at which they stayed
+                    where r.Property_Name = i_property_name
+                      and r.Owner_Email = i_owner_email
+                      and r.Customer = i_customer_email
+#         • The customer must have started a stay at this property at a date in the past that wasn’t cancelled
+#         (current date must be equal to or later than the start date of the reservation at this property)
+                      and r.Start_Date <= i_current_date
+                      and r.Was_Cancelled = 0
+                )
+                )
+            and
+            (not exists(
+                    select 1
+                    from Review as r
+#         • The combination of property_name, owner_email, and customer_email should be distinct in the review table
+#         (a customer should not be able to review a property more than once)
+                    where r.Property_Name = i_property_name
+                      and r.Owner_Email = i_owner_email
+                      and r.Customer = i_customer_email
+                )
+                )
+    then
+        insert into Review (Property_Name, Owner_Email, Customer, Content, Score)
+        values (i_property_name, i_owner_email, i_customer_email, i_content, i_score);
+    end if;
 end //
 delimiter ;
 
 
--- ID: 5d
+-- ID: 5d (155)
 -- Name: view_properties
 create or replace view view_properties
             (
@@ -365,7 +412,7 @@ select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6'
 from property;
 
 
--- ID: 5e
+-- ID: 5e (161)
 -- Name: view_individual_property_reservations
 drop procedure if exists view_individual_property_reservations;
 delimiter //
@@ -442,7 +489,7 @@ create or replace view view_airports
              avg_departing_flight_cost
                 )
 as
--- TODO: replace this select query with your solution    
+-- TODO: replace this select query with your solution
 select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6'
 from airport;
 
@@ -493,7 +540,7 @@ select 'col1', 'col2', 'col3', 'col4'
 from owners;
 
 
--- ID: 9a
+-- ID: 9a (125)
 -- Name: process_date
 drop procedure if exists process_date;
 delimiter //
