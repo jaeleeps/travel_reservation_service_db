@@ -34,27 +34,43 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- checking duplicate emails and credit card numbers
-if exists (select email from Customer where email = i_email) 
-then 
-leave sp_main;
+if exists (
+	select email
+    from Customer 
+    where email = i_email 
+) 
+	then 
+		leave sp_main;
 end if;
 
-if exists (select CcNumber from Customer where CcNumber = i_cc_number)
-then 
-leave sp_main;
+if exists (
+	select CcNumber
+    from Customer
+    where CcNumber = i_cc_number
+)
+	then 
+		leave sp_main;
 end if;
 
 -- check whether phone number is unique too
-if exists (select Phone_Number from Clients where Phone_Number = i_phone_number)
-then 
-leave sp_main;
+if exists (
+	select Phone_Number
+    from Clients
+    where Phone_Number = i_phone_number
+)
+	then 
+		leave sp_main;
 end if;
 
 -- adding an existing client to Customer
-if exists (select Email from Accounts where Email = i_email)
-then 
-insert into Customer (CcNumber, Cvv, Exp_Date, Location) 
-values (i_cc_number, i_cvv, i_exp_date, i_location);
+if exists (
+	select Email 
+    from Accounts
+    where Email = i_email  
+)
+	then 
+        insert into Customer (CcNumber, Cvv, Exp_Date, Location) 
+        values (i_cc_number, i_cvv, i_exp_date, i_location);
 end if;
 
 -- besides the edge cases,
@@ -88,22 +104,34 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- owner's email check
-if exists (select email from Owners where email = i_email) 
-then 
-leave sp_main;
+if exists (
+	select email
+    from Owners 
+    where email = i_email 
+) 
+	then 
+		leave sp_main;
 end if;
 
 -- owner's phone number check
-if exists (select Phone_Number from Clients where Phone_Number = i_phone_number) 
-then
-leave sp_main;
+if exists (
+	select Phone_Number
+    from Clients
+    where Phone_Number = i_phone_number 
+) 
+	then 
+		leave sp_main;
 end if;
 
 -- adding an existing client (customer) as an owner
-if exists (select Email from Accounts where Email = i_email)
-then 
-insert into Owners 
-values (i_email);
+if exists (
+	select Email
+    from Accounts
+    where Email = i_email
+)
+	then 
+        insert into Owners 
+        values (i_email);
 end if;
 
 insert into Accounts (Email, First_Name, Last_Name, Pass)
@@ -133,9 +161,13 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- when property exists -> break this!
-if exists (select Owner_Email from Property where Property.Owner_Email = i_owner_email)
-then
-leave sp_main;
+if exists (
+	select Owner_Email
+    from Property
+    where Property.Owner_Email = i_owner_email
+)
+	then
+		leave sp_main;
 end if;
 
 -- no property, delete owners
@@ -149,14 +181,18 @@ where Owners.Email = i_owner_email;
 -- delete from Owners_Rate_Customers
 -- where Owners_Rate_Customers.Owner_Email = i_owner_email;
 
-if not exists (select Email from Customer where Customer.Email = i_owner_email)
-then
-delete from Owners
-where Owners.Email like i_owner_email;
-delete from Clients
-where Clients.Email like i_owner_email;
-delete from Accounts
-where Accounts.Email like i_owner_email;
+if not exists (
+	select Email
+    from Customer
+    where Customer.Email = i_owner_email
+)
+	then
+		delete from Owners
+        where Owners.Email like i_owner_email;
+		delete from Clients
+		where Clients.Email like i_owner_email;
+		delete from Accounts
+		where Accounts.Email like i_owner_email;
 end if;
 
 /*		
@@ -169,7 +205,6 @@ if exists (
 	then
 		leave sp_main;
 end if;
-
 delete from Clients
 where Clients.Email = i_owner_email;
 delete from Accounts
@@ -209,20 +244,20 @@ if exists (
     from Flight
     where CONCAT(Flight_Num, Airline_Name) = CONCAT(i_flight_num, i_airline_name)
 )
-then
-leave sp_main;
+	then
+		leave sp_main;
 end if;
 
 -- same to_airport and from_airport -> terminate
 if i_from_airport = i_to_airport
-then 
-leave sp_main;
+	then 
+		leave sp_main;
 end if;
 
 -- check flight date
 if i_flight_date < i_current_date
-then 
-leave sp_main;
+	then 
+		leave sp_main;
 end if;
 
 insert into Flight
@@ -253,11 +288,21 @@ sp_main: begin
 -- then leave sp_main;
 -- end if;
 
-if (select Flight_Date from Flight 
-    where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name) < i_current_date
-then 
-leave sp_main;
+if (
+	select Flight_Date
+    from Flight 
+    where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name
+) < i_current_date
+	then 
+		leave sp_main;
 end if;
+
+/*
+if i_flight_num not like Flight.Flight_Num and i_airline_name not like Flight.Airline_Name
+	then 
+		leave sp_main;
+end if;
+*/
 
 delete from Book
 where i_flight_num like Book.Flight_Num and i_airline_name like Book.Airline_Name;
@@ -397,16 +442,31 @@ select flight_num,
        airline_name,
        to_airport,
        cost,
-       (capacity -
-        (select SUM(num_seats)
-         from book
-         where was_cancelled = 0
-           and book.flight_num = flight.flight_num
-           and book.airline_name = flight.airline_name)) as num_empty_seats,
+       case
+			when (select SUM(num_seats)
+				 from book
+				 where was_cancelled = 0
+				   and book.flight_num = flight.flight_num
+				   and book.airline_name = flight.airline_name) > 0
+				then
+				   (capacity -
+					(select SUM(num_seats)
+					 from book
+					 where was_cancelled = 0
+					   and book.flight_num = flight.flight_num
+					   and book.airline_name = flight.airline_name))
+			else
+				capacity
+			end as num_empty_seats,
        case
            when (select count(*)
                  from book
                  where was_cancelled = 1
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name) > 0 and
+				(select count(*)
+                 from book
+                 where was_cancelled = 0
                    and book.flight_num = flight.flight_num
                    and book.airline_name = flight.airline_name) > 0
                then
@@ -420,12 +480,34 @@ select flight_num,
                      where was_cancelled = 1
                        and book.flight_num = flight.flight_num
                        and book.airline_name = flight.airline_name) * cost * 0.2)
-           else
-               ((select SUM(num_seats)
+			when (select count(*)
+                 from book
+                 where was_cancelled = 1
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name) > 0
+				then
+					((select SUM(num_seats)
+                     from book
+                     where was_cancelled = 1
+                       and book.flight_num = flight.flight_num
+                       and book.airline_name = flight.airline_name) * cost * 0.2)
+			when (select count(*)
                  from book
                  where was_cancelled = 0
                    and book.flight_num = flight.flight_num
-                   and book.airline_name = flight.airline_name) * cost)
+                   and book.airline_name = flight.airline_name) > 0
+				then
+					((select SUM(num_seats)
+                     from book
+                     where was_cancelled = 0
+                       and book.flight_num = flight.flight_num
+                       and book.airline_name = flight.airline_name) * cost)
+           else
+               (select count(*)
+                 from book
+                 where was_cancelled = 0
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name)
            end                                           as total_spent
 from flight
 group by flight_num;
