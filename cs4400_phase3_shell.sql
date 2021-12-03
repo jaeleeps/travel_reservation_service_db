@@ -508,6 +508,12 @@ delimiter ;
 
 -- ID: 5d (155)
 -- Name: view_properties
+/**
+  This view displays the name, average rating score, description, concatenated address, capacity
+  , and cost per night of all properties.
+  Note: The concatenated address should have a comma and space (‘, ‘) between each part of the address
+  (ie: “Blackhawks St, Chicago, IL, 60176”).
+ */
 create or replace view view_properties
             (
              property_name,
@@ -518,13 +524,28 @@ create or replace view view_properties
              cost_per_night
                 )
 as
--- TODO: replace this select query with your solution
-select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6'
-from property;
-
+select prop.Property_Name                                                     as property_name
+     , (
+    select avg(r.Score)
+    from Review as r
+    where r.Property_Name = prop.Property_Name
+    group by r.Property_Name
+)                                                                             as average_rating_score
+     , prop.Descr                                                             as description
+     , CONCAT(prop.Street, ', ', prop.City, ', ', prop.State, ', ', prop.Zip) as address
+     , prop.Capacity                                                          as capacity
+     , prop.Cost                                                              as cost_per_night
+from Property as prop
+;
 
 -- ID: 5e (161)
 -- Name: view_individual_property_reservations
+/**
+  This procedure creates a table that displays a single property’s reservations such as the name, start date, end date, customer email, customer phone number, the total cost of the booking, the property rating score from the customer if it exists (null if it doesn’t exist), and the property review from the customer if it exists (null if it doesn’t exist), if (and only if) the following conditions are met:
+• The property name and owner email must exist in the system. If they do not exist in the system, a table should be created with no entries.
+• For calculating total cost, include the start and end date in the number of days. The cost of a single reservation should be number of days * property cost, and if the reservation is cancelled only take 20% of this calculation.
+• Note: within this procedure we will create a table titled: “view_individual_property_reservations” that will display the data mentioned above.
+ */
 drop procedure if exists view_individual_property_reservations;
 delimiter //
 create procedure view_individual_property_reservations(
@@ -545,9 +566,29 @@ begin
         rating_score       int,
         review             varchar(500)
     ) as
-        -- TODO: replace this select query with your solution
-    select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8' from reserve;
-
+    select r.Property_Name as property_name
+         , r.Start_Date    as start_date
+         , r.End_Date      as end_date
+         , c.Email         as customer_email
+         , c.Phone_Number  as customer_phone_num
+         , cast(
+                p.Cost * (datediff(r.End_Date, r.Start_Date) + 1)
+                * if(Was_Cancelled = 1, 1.2, 1.0)
+        as decimal(6, 2))  as total_booking_cost
+         , rv.Score        as rating_score
+         , rv.Content      as review
+    from Reserve as r
+             left join Property p
+                       on p.Property_Name = r.Property_Name
+                           and p.Owner_Email = r.Owner_Email
+             left join Clients c
+                       on r.Customer = c.Email
+             left join Review rv
+                       on rv.Property_Name = r.Property_Name
+                           and rv.Owner_Email = r.Owner_Email
+                           and rv.Customer = c.Email
+    where r.Property_Name = i_property_name
+      and r.Owner_Email = i_owner_email;
 end //
 delimiter ;
 
