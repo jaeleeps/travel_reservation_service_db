@@ -400,6 +400,12 @@ delimiter ;
 
 -- ID: 5d (155)
 -- Name: view_properties
+/**
+  This view displays the name, average rating score, description, concatenated address, capacity
+  , and cost per night of all properties.
+  Note: The concatenated address should have a comma and space (‘, ‘) between each part of the address
+  (ie: “Blackhawks St, Chicago, IL, 60176”).
+ */
 create or replace view view_properties
             (
              property_name,
@@ -410,10 +416,19 @@ create or replace view view_properties
              cost_per_night
                 )
 as
--- TODO: replace this select query with your solution
-select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6'
-from property;
-
+select prop.Property_Name
+     , (
+    select avg(r.Score)
+    from Review as r
+    where r.Property_Name = prop.Property_Name
+    group by r.Property_Name
+)
+     , prop.Descr
+     , CONCAT(prop.Street, ', ', prop.City, ', ', prop.State, ', ', prop.Zip)
+     , prop.Capacity
+     , prop.Cost
+from Property as prop
+;
 
 -- ID: 5e (161)
 -- Name: view_individual_property_reservations
@@ -439,6 +454,7 @@ begin
     ) as
         -- TODO: replace this select query with your solution
     select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7', 'col8' from reserve;
+    ;
 
 end //
 delimiter ;
