@@ -694,6 +694,13 @@ from owners;
 
 -- ID: 9a (125)
 -- Name: process_date
+/**
+  This procedure updates the database based on the current date by updating all customers’ locations
+  who are taking a flight on that date to the state of their destination airport
+  if (and only if) the following conditions are met:
+• If a user cancels their flight for that date, their location should not be updated
+• Note: a customer should not have more than one non-cancelled flight in a single day
+ */
 drop procedure if exists process_date;
 delimiter //
 create procedure process_date(
@@ -701,7 +708,16 @@ create procedure process_date(
 )
 sp_main:
 begin
-    -- TODO: Implement your solution here
-
+    update Customer c
+        left join Book b
+            on c.Email = b.Customer
+        left join Flight f
+            on b.Flight_Num = f.Flight_Num
+        left join Airport a
+            on f.To_Airport = a.Airport_Id
+    set c.Location = a.State
+    where b.Was_Cancelled = 0
+        and f.Flight_Date = i_current_date
+    ;
 end //
 delimiter ;
