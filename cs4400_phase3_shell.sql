@@ -122,7 +122,49 @@ create procedure book_flight(
 sp_main:
 begin
     -- TODO: Implement your solution here
+	if
+		i_num_seats >
+			((select capacity from flight where flight_num = i_flight_num and airline_name = i_airline_name) -
+			 (select SUM(num_seats) from book where flight_num = i_flight_num and airline_name = i_airline_name and was_cancelled = 0))
+	then
+		leave sp_main;
+	end if;
+    
+    if
+		i_current_date >=
+			(select flight_date from flight where flight_num = i_flight_num and airline_Name = i_airline_name)
+	then
+		leave sp_main;
+	end if;
 
+    if
+		(select count(*) from book join flight on book.flight_num = flight.flight_num and book.airline_name = flight.airline_name
+        where i_customer_email = book.customer and was_cancelled = 0 and
+        flight.flight_date = (select flight_date from flight where flight_num = i_flight_num and airline_name = i_airline_name)) > 0
+	then
+		leave sp_main;
+	end if;
+    
+    if
+		i_flight_num in
+			(select flight_num from book where i_customer_email = customer and i_airline_name = airline_name and was_cancelled = 1)
+	then
+		leave sp_main;
+	end if;
+    
+    if
+		i_flight_num in
+			(select flight_num from book where i_customer_email = customer and i_airline_name = airline_name)
+	then
+		update book
+			set num_seats = num_seats + i_num_seats
+            where i_flight_num in
+				(select flight_num from book where i_customer_email = customer and i_airline_name = airline_name);
+	else
+		insert into book (customer, flight_num, airline_name, num_seats, was_cancelled) VALUES
+		(i_customer_email, i_flight_num, i_airline_name, i_num_seats, 0);
+	end if;
+    
 end //
 delimiter ;
 
@@ -139,6 +181,23 @@ create procedure cancel_flight_booking(
 sp_main:
 begin
     -- TODO: Implement your solution here
+	if
+		i_current_date >=
+			(select flight_date from flight where flight_num = i_flight_num)
+	then
+		leave sp_main;
+	end if;
+    
+    if
+		not i_flight_num in
+			(select flight_num from book where i_customer_email = customer and i_airline_name = airline_name)
+    then
+		leave sp_main;
+	end if;
+    
+    update book
+		set was_cancelled = 1
+		where customer = i_customer_email and flight_num = i_flight_num and airline_name = i_airline_name;
 
 end //
 delimiter ;
@@ -158,9 +217,18 @@ create or replace view view_flight
                 )
 as
 -- TODO: replace this select query with your solution
-select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6', 'col7'
-from flight;
-
+select flight_num, flight_date, airline_name, to_airport, cost,
+		(capacity -
+        (select SUM(num_seats) from book where was_cancelled = 0 and book.flight_num = flight.flight_num and book.airline_name = flight.airline_name)) as num_empty_seats,
+        case
+			when (select count(*) from book where was_cancelled = 1 and book.flight_num = flight.flight_num and book.airline_name = flight.airline_name) > 0
+			then
+				((select SUM(num_seats) from book where was_cancelled = 0 and book.flight_num = flight.flight_num and book.airline_name = flight.airline_name) * cost) +
+					((select SUM(num_seats) from book where was_cancelled = 1 and book.flight_num = flight.flight_num and book.airline_name = flight.airline_name) * cost * 0.2) 
+			else
+				((select SUM(num_seats) from book where was_cancelled = 0 and book.flight_num = flight.flight_num and book.airline_name = flight.airline_name) * cost)
+		end as total_spent
+        from flight group by flight_num;
 
 -- ID: 4a
 -- Name: add_property
@@ -182,6 +250,31 @@ create procedure add_property(
 sp_main:
 begin
     -- TODO: Implement your solution here
+    if 
+		(select count(*) from property where i_street = street and i_city = city and i_state = state and i_zip = zip) > 0
+	then
+		leave sp_main;
+	end if;
+    
+    if
+		i_property_name in
+			(select property_name from property where owner_email = i_owner_email)
+	then
+		leave sp_main;
+	end if;
+    
+    insert into property (Property_Name, Owner_Email, Descr, Capacity, Cost, Street, City, State, Zip) values
+		(i_property_name, i_owner_email, i_description, i_capacity, i_cost, i_street, i_city, i_state, i_zip);
+        
+	if
+		i_nearest_airport_id is null or i_dist_to_airport is null or 
+        i_nearest_airport_id not in (select airport_id from airport)
+	then
+		leave sp_main;
+	end if;
+	
+    insert into is_close_to (Property_Name, Owner_Email, Airport, Distance) VALUES
+		(i_property_name, i_owner_email, i_nearest_airport_id, i_dist_to_airport);
 
 end //
 delimiter ;
@@ -199,6 +292,21 @@ create procedure remove_property(
 sp_main:
 begin
     -- TODO: Implement your solution here
+    if
+		i_current_date >= 
+			(select start_date from reserve where i_property_name = property_name and i_owner_email = owner_email)
+		and
+        i_current_date <=
+			(select end_date from reserve where i_property_name = property_name and i_owner_email = owner_email)
+	then
+		leave sp_main;
+	end if;
+    
+    delete from is_close_to where i_property_name = property_name and i_owner_email = owner_email;
+    delete from amenity where i_property_name = property_name and i_owner_email = property_owner;
+    delete from review where i_property_name = property_name and i_owner_email = owner_email;
+    delete from reserve where i_property_name = property_name and i_owner_email = owner_email;
+    delete from property where i_property_name = property_name and i_owner_email = owner_email;
 
 end //
 delimiter ;
