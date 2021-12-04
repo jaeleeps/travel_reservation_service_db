@@ -1,7 +1,7 @@
 -- CS4400: Introduction to Database Systems (Fall 2021)
 -- Phase III: Stored Procedures & Views [v0] Tuesday, November 9, 2021 @ 12:00am EDT
 -- Team __
--- jbrachey3
+-- Team Member Name (GT username)
 -- Team Member Name (GT username)
 -- Team Member Name (GT username)
 -- Team Member Name (GT username)
@@ -663,27 +663,7 @@ create procedure customer_rates_owner(
 sp_main:
 begin
     -- TODO: Implement your solution here
-	-- first, make sure accounts are in database
-	if i_customer_email not in (select email from customer)
-	then leave sp_main; end if;
 
-	if i_owner_email not in (select email from owners)
-	then leave sp_main; end if;
-
-	-- make sure customer and owner combo isn't already in customer_rates_owner
-	if (select count(*) from customers_rate_owners
-	where customer = i_customer_email and owner_email = i_owner_email) > 0
-	then leave sp_main; end if;
-
-	-- make sure the customer has stayed at a property owned by the owner and did not cancel
-	if (select count(*)
-	from reserve where customer = i_customer_email and owner_email = i_owner_email
-	and start_date <= i_current_date and was_cancelled = 0) = 0
-	then leave sp_main; end if;
-
-	-- finally, add the rating to customer_rates_owner
-	insert into customers_rate_owners
-	values (i_customer_email, i_owner_email, i_score);
 end //
 delimiter ;
 
@@ -701,27 +681,7 @@ create procedure owner_rates_customer(
 sp_main:
 begin
     -- TODO: Implement your solution here
-	-- first, make sure accounts are in database
-	if i_owner_email not in (select email from owners)
-	then leave sp_main; end if;
 
-	if i_customer_email not in (select email from customer)
-	then leave sp_main; end if;
-
-	-- make sure customer and owner combo isn't already in owners_rate_customers
-	if (select count(*) from owners_rate_customers
-	where customer = i_customer_email and owner_email = i_owner_email) > 0
-	then leave sp_main; end if;
-
-	-- make sure the customer has stayed at a property owned by the owner and did not cancel
-	if (select count(*)
-	from reserve where owner_email = i_owner_email and customer = i_customer_email
-	and start_date <= i_current_date and was_cancelled = 0) = 0
-	then leave sp_main; end if;
-
-	-- finally, add the rating to owners_rate_customers
-	insert into owners_rate_customers
-	values (i_owner_email, i_customer_email, i_score);
 end //
 delimiter ;
 
@@ -738,20 +698,9 @@ create or replace view view_airports
              avg_departing_flight_cost
                 )
 as
-	-- TODO: replace this select query with your solution
-	select airport_id, airport_name, time_zone, total_arriving_flights, 
-	total_departing_flights, avg_departing_flight_cost
-	from (
-		(select airport_id, airport_name, time_zone,
-		count(distinct flight_num) as total_departing_flights,
-        avg(cost) as avg_departing_flight_cost
-		from airport
-			left outer join flight
-			on airport_id = from_airport group by airport_id) as temp_departure 
-				natural join
-				(select airport_id, count(distinct flight_num) as total_arriving_flights
-				from airport left outer join flight
-				on airport_id = to_airport group by airport_id) as temp_a);
+-- TODO: replace this select query with your solution
+select 'col1', 'col2', 'col3', 'col4', 'col5', 'col6'
+from airport;
 
 -- ID: 7b
 -- Name: view_airlines
@@ -763,10 +712,9 @@ create or replace view view_airlines
              min_flight_cost
                 )
 as
-	-- TODO: replace this select query with your solution
-	select airline_name, rating, count(*) as total_flights, min(cost) as min_flight_cost
-	from airline natural join flight
-	group by airline_name;
+-- TODO: replace this select query with your solution
+select 'col1', 'col2', 'col3', 'col4'
+from airline;
 
 
 -- ID: 8a
@@ -781,18 +729,9 @@ create or replace view view_customers
                 )
 as
     -- TODO: replace this select query with your solution
-	-- view customers
-	select customer_name, avg_rating, location,
-	count(distinct email) as is_owner, total_seats_purchased
-		from (select customer_name, email as client_email,
-		avg_rating, location, IFNULL(sum(num_seats), 0) as total_seats_purchased
-			from (select concat(first_name, ' ', last_name) as customer_name, 
-            email, avg(score) as avg_rating, location
-				from (select * from customer natural join accounts) as temp_account_info
-				left outer join owners_rate_customers
-                on email = customer group by email) as temp_ratings
-			left outer join book on email = customer group by email) as temp_seats
-		left outer join owners on email = client_email group by client_email;
+-- view customers
+select 'col1', 'col2', 'col3', 'col4', 'col5'
+from customer;
 
 
 -- ID: 8b
@@ -805,20 +744,9 @@ create or replace view view_owners
              avg_property_rating
                 )
 as
-	-- TODO: replace this select query with your solution
-	select owner_name, avg_rating, 
-	count(distinct street, city, state, zip) as num_properties_owned, avg_property_rating 
-		from (select owner_name, email, avg_rating, avg(score) as avg_property_rating
-			from (select owner_name, email, avg_rating
-				from (select concat(first_name, ' ', last_name) as owner_name, email
-					from owners natural join accounts) as temp_info
-					left outer join 
-						(select owner_email, avg(score) as avg_rating
-						from customers_rate_owners group by owner_email) as temp_ratings
-					on email = owner_email group by email) as temp_name_rating
-			left outer join review 
-			on email = owner_email group by email) as temp_prop_rating
-		left outer join property on email = owner_email group by email;
+-- TODO: replace this select query with your solution
+select 'col1', 'col2', 'col3', 'col4'
+from owners;
 
 
 -- ID: 9a (125)
