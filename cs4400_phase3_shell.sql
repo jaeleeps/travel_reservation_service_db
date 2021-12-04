@@ -34,43 +34,27 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- checking duplicate emails and credit card numbers
-if exists (
-	select email
-    from Customer 
-    where email = i_email 
-) 
-	then 
-		leave sp_main;
+if exists (select email from Customer where email = i_email) 
+then 
+leave sp_main;
 end if;
 
-if exists (
-	select CcNumber
-    from Customer
-    where CcNumber = i_cc_number
-)
-	then 
-		leave sp_main;
+if exists (select CcNumber from Customer where CcNumber = i_cc_number)
+then 
+leave sp_main;
 end if;
 
 -- check whether phone number is unique too
-if exists (
-	select Phone_Number
-    from Clients
-    where Phone_Number = i_phone_number
-)
-	then 
-		leave sp_main;
+if exists (select Phone_Number from Clients where Phone_Number = i_phone_number)
+then 
+leave sp_main;
 end if;
 
 -- adding an existing client to Customer
-if exists (
-	select Email 
-    from Accounts
-    where Email = i_email  
-)
-	then 
-        insert into Customer (CcNumber, Cvv, Exp_Date, Location) 
-        values (i_cc_number, i_cvv, i_exp_date, i_location);
+if exists (select Email from Accounts where Email = i_email)
+then 
+insert into Customer (CcNumber, Cvv, Exp_Date, Location) 
+values (i_cc_number, i_cvv, i_exp_date, i_location);
 end if;
 
 -- besides the edge cases,
@@ -104,34 +88,22 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- owner's email check
-if exists (
-	select email
-    from Owners 
-    where email = i_email 
-) 
-	then 
-		leave sp_main;
+if exists (select email from Owners where email = i_email) 
+then 
+leave sp_main;
 end if;
 
 -- owner's phone number check
-if exists (
-	select Phone_Number
-    from Clients
-    where Phone_Number = i_phone_number 
-) 
-	then 
-		leave sp_main;
+if exists (select Phone_Number from Clients where Phone_Number = i_phone_number) 
+then 
+leave sp_main;
 end if;
 
 -- adding an existing client (customer) as an owner
-if exists (
-	select Email
-    from Accounts
-    where Email = i_email
-)
-	then 
-        insert into Owners 
-        values (i_email);
+if exists (select Email from Accounts where Email = i_email)
+then 
+insert into Owners 
+values (i_email);
 end if;
 
 insert into Accounts (Email, First_Name, Last_Name, Pass)
@@ -140,6 +112,7 @@ insert into Clients (Email, Phone_Number)
 values (i_email, i_phone_number);
 insert into Owners
 values(i_email);
+
 end //
 delimiter ;
 
@@ -161,55 +134,23 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- when property exists -> break this!
-if exists (
-	select Owner_Email
-    from Property
-    where Property.Owner_Email = i_owner_email
-)
-	then
-		leave sp_main;
+if exists (select Owner_Email from Property where Property.Owner_Email = i_owner_email)
+then
+leave sp_main;
 end if;
 
 -- no property, delete owners
 -- if i_owner_email does not exist in the Properties (no property but yes owner), then delete the corresponding row
 delete from Owners
 where Owners.Email = i_owner_email;
- 
--- delete the reviews
--- delete from Customers_Rate_Owners
--- where Cusomers_Rate_Owners.Owner_Email = i_owner_email;
--- delete from Owners_Rate_Customers
--- where Owners_Rate_Customers.Owner_Email = i_owner_email;
 
-if not exists (
-	select Email
-    from Customer
-    where Customer.Email = i_owner_email
-)
-	then
-		delete from Owners
-        where Owners.Email like i_owner_email;
-		delete from Clients
-		where Clients.Email like i_owner_email;
-		delete from Accounts
-		where Accounts.Email like i_owner_email;
+if not exists (select Email from Customer where Customer.Email = i_owner_email)
+then
+delete from Owners where Owners.Email like i_owner_email;
+delete from Clients where Clients.Email like i_owner_email;
+delete from Accounts where Accounts.Email like i_owner_email;
 end if;
 
-/*		
--- when not customer
-if exists (
-	select Email
-    from Customer
-    where Customer.Email = i_owner_email
-)
-	then
-		leave sp_main;
-end if;
-delete from Clients
-where Clients.Email = i_owner_email;
-delete from Accounts
-where Accounts.Email = i_owner_email;
-*/
 end //
 delimiter ;
 
@@ -239,25 +180,21 @@ sp_main: begin
 -- TODO: Implement your solution here
 
 -- gotta be unique flight num + airline name
-if exists (
-	select CONCAT(Flight_Num, Airline_Name)
-    from Flight
-    where CONCAT(Flight_Num, Airline_Name) = CONCAT(i_flight_num, i_airline_name)
-)
-	then
-		leave sp_main;
+if exists (select CONCAT(Flight_Num, Airline_Name) from Flight where CONCAT(Flight_Num, Airline_Name) = CONCAT(i_flight_num, i_airline_name))
+then
+leave sp_main;
 end if;
 
 -- same to_airport and from_airport -> terminate
 if i_from_airport = i_to_airport
-	then 
-		leave sp_main;
+then 
+leave sp_main;
 end if;
 
 -- check flight date
 if i_flight_date < i_current_date
-	then 
-		leave sp_main;
+then 
+leave sp_main;
 end if;
 
 insert into Flight
@@ -283,31 +220,15 @@ create procedure remove_flight (
 sp_main: begin
 -- TODO: Implement your solution here
 
-
--- if (Flight.Flight_Date <= i_current_date and (i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name))
--- then leave sp_main;
--- end if;
-
-if (
-	select Flight_Date
-    from Flight 
-    where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name
-) < i_current_date
-	then 
-		leave sp_main;
+-- check whether the flight number and airline name are equal
+-- then check the dates -> terminate
+if (select Flight_Date from Flight where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name) < i_current_date
+then 
+leave sp_main;
 end if;
 
-/*
-if i_flight_num not like Flight.Flight_Num and i_airline_name not like Flight.Airline_Name
-	then 
-		leave sp_main;
-end if;
-*/
-
-delete from Book
-where i_flight_num like Book.Flight_Num and i_airline_name like Book.Airline_Name;
-delete from Flight
-where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name;
+delete from Book where i_flight_num like Book.Flight_Num and i_airline_name like Book.Airline_Name;
+delete from Flight where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name;
 
 end //
 delimiter ;
