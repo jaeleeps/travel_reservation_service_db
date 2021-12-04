@@ -1,20 +1,25 @@
 -- CS4400: Introduction to Database Systems (Fall 2021)
 -- Phase III: Stored Procedures & Views [v0] Tuesday, November 9, 2021 @ 12:00am EDT
--- Team __
--- jbrachey3
--- Team Member Name (GT username)
--- Team Member Name (GT username)
--- Team Member Name (GT username)
+-- Team 59
+-- Felix Wang (fwang356)
+-- Jacob Brachey (jbrachey3)
+-- Jaeyoung Lee (jlee3414)
+-- Hyuntaek Lim (hlim96)
 -- Directions:
 -- Please follow all instructions for Phase III as listed on Canvas.
 -- Fill in the team number and names and GT usernames for all members above.
 
-
 -- ID: 1a
 -- Name: register_customer
+
+-- This procedure is to register a new customer if (and only if) the following conditions are met: 
+-- The new customer’s email and phone number will be unique in the system.
+-- The new customer’s credit card number will be unique in the system.
+-- The new customer’s phone number will be unique in the system.
+-- If the customer to be added already exists as an account and client, but not as a customer, we will add them as a customer to indicate that they are now both an owner and a customer.
 drop procedure if exists register_customer;
 delimiter //
-create procedure register_customer(
+create procedure register_customer (
     in i_email varchar(50),
     in i_first_name varchar(100),
     in i_last_name varchar(100),
@@ -24,54 +29,142 @@ create procedure register_customer(
     in i_cvv char(3),
     in i_exp_date date,
     in i_location varchar(50)
-)
-sp_main:
-begin
-    -- TODO: Implement your solution here
+) 
+sp_main: begin
+-- TODO: Implement your solution here
+
+-- checking duplicate emails and credit card numbers
+if exists (select email from Customer where email = i_email) 
+then 
+leave sp_main;
+end if;
+
+if exists (select CcNumber from Customer where CcNumber = i_cc_number)
+then 
+leave sp_main;
+end if;
+
+-- check whether phone number is unique too
+if exists (select Phone_Number from Clients where Phone_Number = i_phone_number)
+then 
+leave sp_main;
+end if;
+
+-- adding an existing client to Customer
+if exists (select Email from Accounts where Email = i_email)
+then 
+insert into Customer (CcNumber, Cvv, Exp_Date, Location) 
+values (i_cc_number, i_cvv, i_exp_date, i_location);
+end if;
+
+-- besides the edge cases,
+insert into Accounts (Email, First_Name, Last_Name, Pass)
+values (i_email, i_first_name, i_last_name, i_password);
+insert into Clients (Email, Phone_Number)
+values (i_email, i_phone_number);		
+insert into Customer (Email, CcNumber, Cvv, Exp_Date, Location)
+values (i_email, i_cc_number, i_cvv, i_exp_date, i_location);
 
 end //
 delimiter ;
 
-
 -- ID: 1b
 -- Name: register_owner
+-- This procedure is to register a new owner if (and only if) the following conditions are met
+
+-- The new owner’s email and phone number will be unique in the system.
+-- The new owner’s phone number will be unique in the system.
+-- If the owner to be added already exists as an account and client, but not as an owner, we will add them as an owner to indicate that they are now both a customer and an owner.
 drop procedure if exists register_owner;
 delimiter //
-create procedure register_owner(
+create procedure register_owner (
     in i_email varchar(50),
     in i_first_name varchar(100),
     in i_last_name varchar(100),
     in i_password varchar(50),
     in i_phone_number char(12)
-)
-sp_main:
-begin
-    -- TODO: Implement your solution here
+) 
+sp_main: begin
+-- TODO: Implement your solution here
+
+-- owner's email check
+if exists (select email from Owners where email = i_email) 
+then 
+leave sp_main;
+end if;
+
+-- owner's phone number check
+if exists (select Phone_Number from Clients where Phone_Number = i_phone_number) 
+then 
+leave sp_main;
+end if;
+
+-- adding an existing client (customer) as an owner
+if exists (select Email from Accounts where Email = i_email)
+then 
+insert into Owners 
+values (i_email);
+end if;
+
+insert into Accounts (Email, First_Name, Last_Name, Pass)
+values (i_email, i_first_name, i_last_name, i_password);
+insert into Clients (Email, Phone_Number)
+values (i_email, i_phone_number);
+insert into Owners
+values(i_email);
 
 end //
 delimiter ;
-
 
 -- ID: 1c
 -- Name: remove_owner
+
+-- This procedure is to delete an owner if (and only if) the following conditions are met
+-- The owner has no listed properties.
+-- If an owner is deleted, their reviews of customers should be deleted as well
+-- If an owner is deleted, customer reviews of the owner should be deleted as well
+-- Only the owner should be removed from the system – if the owner is also a customer, then the customer should remain in the system. 
+-- If the owner is not also a customer, then the client and account associated with this owner should be removed as well.
 drop procedure if exists remove_owner;
 delimiter //
-create procedure remove_owner(
+create procedure remove_owner ( 
     in i_owner_email varchar(50)
 )
-sp_main:
-begin
-    -- TODO: Implement your solution here
+sp_main: begin
+-- TODO: Implement your solution here
+
+-- when property exists -> break this!
+if exists (select Owner_Email from Property where Property.Owner_Email = i_owner_email)
+then
+leave sp_main;
+end if;
+
+-- no property, delete owners
+-- if i_owner_email does not exist in the Properties (no property but yes owner), then delete the corresponding row
+delete from Owners
+where Owners.Email = i_owner_email;
+
+if not exists (select Email from Customer where Customer.Email = i_owner_email)
+then
+delete from Owners where Owners.Email like i_owner_email;
+delete from Clients where Clients.Email like i_owner_email;
+delete from Accounts where Accounts.Email like i_owner_email;
+end if;
 
 end //
 delimiter ;
 
-
 -- ID: 2a
 -- Name: schedule_flight
+
+-- This procedure is used for an airline adding a new flight if (and only if) the following conditions are met:
+-- The new flight numbers must be combined with the airline’s name to be uniquely identifiable
+-- The flight cannot have the same to_airport and from_airport
+-- The flight date must be in the future (use current date for comparison)
+
 drop procedure if exists schedule_flight;
 delimiter //
-create procedure schedule_flight(
+create procedure schedule_flight (
     in i_flight_num char(5),
     in i_airline_name varchar(50),
     in i_from_airport char(3),
@@ -83,26 +176,59 @@ create procedure schedule_flight(
     in i_capacity int,
     in i_current_date date
 )
-sp_main:
-begin
-    -- TODO: Implement your solution here
+sp_main: begin
+-- TODO: Implement your solution here
+
+-- gotta be unique flight num + airline name
+if exists (select CONCAT(Flight_Num, Airline_Name) from Flight where CONCAT(Flight_Num, Airline_Name) = CONCAT(i_flight_num, i_airline_name))
+then
+leave sp_main;
+end if;
+
+-- same to_airport and from_airport -> terminate
+if i_from_airport = i_to_airport
+then 
+leave sp_main;
+end if;
+
+-- check flight date
+if i_flight_date < i_current_date
+then 
+leave sp_main;
+end if;
+
+insert into Flight
+values (i_flight_num, i_airline_name, i_from_airport, i_to_airport, i_departure_time, i_arrival_time, i_flight_date, i_cost, i_capacity);
 
 end //
 delimiter ;
 
-
 -- ID: 2b
 -- Name: remove_flight
+
+-- This procedure is used for an airline to cancel an existing flight if (and only if) the following conditions are met:
+-- The flight must be scheduled to depart at a date in the future compared to the current_date passed in
+--  When a flight is cancelled, all bookings associated with the flight should also be deleted to reflect its cancellation
+
 drop procedure if exists remove_flight;
 delimiter //
-create procedure remove_flight(
+create procedure remove_flight ( 
     in i_flight_num char(5),
     in i_airline_name varchar(50),
     in i_current_date date
-)
-sp_main:
-begin
-    -- TODO: Implement your solution here
+) 
+sp_main: begin
+-- TODO: Implement your solution here
+
+-- check whether the flight number and airline name are equal
+-- then check the dates -> terminate
+if (select Flight_Date from Flight where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name) < i_current_date
+then 
+leave sp_main;
+end if;
+
+delete from Book where i_flight_num like Book.Flight_Num and i_airline_name like Book.Airline_Name;
+delete from Flight where i_flight_num like Flight.Flight_Num and i_airline_name like Flight.Airline_Name;
 
 end //
 delimiter ;
@@ -237,16 +363,31 @@ select flight_num,
        airline_name,
        to_airport,
        cost,
-       (capacity -
-        (select SUM(num_seats)
-         from book
-         where was_cancelled = 0
-           and book.flight_num = flight.flight_num
-           and book.airline_name = flight.airline_name)) as num_empty_seats,
+       case
+			when (select SUM(num_seats)
+				 from book
+				 where was_cancelled = 0
+				   and book.flight_num = flight.flight_num
+				   and book.airline_name = flight.airline_name) > 0
+				then
+				   (capacity -
+					(select SUM(num_seats)
+					 from book
+					 where was_cancelled = 0
+					   and book.flight_num = flight.flight_num
+					   and book.airline_name = flight.airline_name))
+			else
+				capacity
+			end as num_empty_seats,
        case
            when (select count(*)
                  from book
                  where was_cancelled = 1
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name) > 0 and
+				(select count(*)
+                 from book
+                 where was_cancelled = 0
                    and book.flight_num = flight.flight_num
                    and book.airline_name = flight.airline_name) > 0
                then
@@ -260,12 +401,34 @@ select flight_num,
                      where was_cancelled = 1
                        and book.flight_num = flight.flight_num
                        and book.airline_name = flight.airline_name) * cost * 0.2)
-           else
-               ((select SUM(num_seats)
+			when (select count(*)
+                 from book
+                 where was_cancelled = 1
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name) > 0
+				then
+					((select SUM(num_seats)
+                     from book
+                     where was_cancelled = 1
+                       and book.flight_num = flight.flight_num
+                       and book.airline_name = flight.airline_name) * cost * 0.2)
+			when (select count(*)
                  from book
                  where was_cancelled = 0
                    and book.flight_num = flight.flight_num
-                   and book.airline_name = flight.airline_name) * cost)
+                   and book.airline_name = flight.airline_name) > 0
+				then
+					((select SUM(num_seats)
+                     from book
+                     where was_cancelled = 0
+                       and book.flight_num = flight.flight_num
+                       and book.airline_name = flight.airline_name) * cost)
+           else
+               (select count(*)
+                 from book
+                 where was_cancelled = 0
+                   and book.flight_num = flight.flight_num
+                   and book.airline_name = flight.airline_name)
            end                                           as total_spent
 from flight
 group by flight_num;
