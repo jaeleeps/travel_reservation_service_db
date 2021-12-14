@@ -432,7 +432,7 @@ select flight_num,
                then
                ((select sum(num_seats)
                  from book
-                 where was_cancelled = 0s
+                 where was_cancelled = 0
                    and book.flight_num = flight.flight_num
                    and book.airline_name = flight.airline_name) * cost)
            else
@@ -936,7 +936,8 @@ create or replace view view_airports
              time_zone,
              total_arriving_flights,
              total_departing_flights,
-             avg_departing_flight_cost
+             avg_departing_flight_cost,
+             address
                 )
 as
     -- todo: replace this select query with your solution
@@ -945,13 +946,15 @@ select airport_id,
        time_zone,
        total_arriving_flights,
        total_departing_flights,
-       avg_departing_flight_cost
+       avg_departing_flight_cost,
+	   address
 from (
       (select airport_id,
               airport_name,
               time_zone,
               count(distinct flight_num) as total_departing_flights,
-              avg(cost)                  as avg_departing_flight_cost
+              avg(cost)                  as avg_departing_flight_cost,
+              concat(street, ', ', city, ', ', state, ' ', zip) as address
        from airport
                 left outer join flight
                                 on airport_id = from_airport
